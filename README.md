@@ -1,0 +1,315 @@
+# InfluxDB MCP Server
+
+A FastMCP server providing read-only access to InfluxDB v2 databases. This server enables Large Language Models (LLMs) to query and analyze time-series data stored in InfluxDB through the Model Context Protocol (MCP).
+
+## Features
+
+- **Read-only operations** for security
+- **FastMCP framework** for high performance
+- **Comprehensive querying** capabilities
+- **Schema discovery** (measurements, fields, tags)
+- **Custom Flux queries** support
+- **Time-range filtering** and data aggregation
+- **Environment-based configuration** via `.env` file
+- **uvx support** for easy installation and deployment
+
+## Prerequisites
+
+- Python 3.12+
+- uv package manager (automatically installed if using uvx)
+- Access to an InfluxDB v2 instance
+- Valid InfluxDB authentication token
+
+## Installation
+
+### Using uvx (Recommended)
+
+```bash
+# Install and run directly from source
+uvx --from git+https://github.com/your-repo/influxdb-mcp influxdb-mcp
+
+# Or install for persistent use
+uvx install influxdb-mcp
+```
+
+### Development Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd influxdb-mcp
+
+# Install dependencies
+uv sync
+
+# Run the server
+uv run influxdb-mcp
+```
+
+## Configuration
+
+Create a `.env` file in the project root with your InfluxDB connection details:
+
+```bash
+# Copy the example configuration
+cp .env.example .env
+```
+
+Edit `.env` with your InfluxDB settings:
+
+```env
+# InfluxDB connection settings
+INFLUXDB_HOST=localhost
+INFLUXDB_PORT=8086
+INFLUXDB_TOKEN=your-influxdb-token-here
+INFLUXDB_ORG=your-organization-name
+INFLUXDB_BUCKET=your-bucket-name
+
+# Optional settings
+INFLUXDB_USE_SSL=false
+INFLUXDB_VERIFY_SSL=true
+INFLUXDB_TIMEOUT=10000
+```
+
+### Configuration Parameters
+
+| Parameter | Description | Default | Required |
+|-----------|-------------|---------|----------|
+| `INFLUXDB_HOST` | InfluxDB server hostname | `localhost` | No |
+| `INFLUXDB_PORT` | InfluxDB server port | `8086` | No |
+| `INFLUXDB_TOKEN` | Authentication token | - | **Yes** |
+| `INFLUXDB_ORG` | Organization name | - | **Yes** |
+| `INFLUXDB_BUCKET` | Bucket name | - | **Yes** |
+| `INFLUXDB_USE_SSL` | Use HTTPS connection | `false` | No |
+| `INFLUXDB_VERIFY_SSL` | Verify SSL certificates | `true` | No |
+| `INFLUXDB_TIMEOUT` | Request timeout (ms) | `10000` | No |
+
+## Usage
+
+### Running the Server
+
+```bash
+# Using uv
+uv run influxdb-mcp
+
+# Using uvx
+uvx influxdb-mcp
+
+# Direct Python execution
+python -m influxdb_mcp
+```
+
+### Available Tools
+
+The server provides the following MCP tools:
+
+#### 1. `test_connection`
+Test the connection to InfluxDB and return status information.
+
+```json
+{
+  "name": "test_connection"
+}
+```
+
+#### 2. `list_measurements`
+List all available measurements in the configured bucket.
+
+```json
+{
+  "name": "list_measurements"
+}
+```
+
+#### 3. `get_measurement_schema`
+Get schema information (fields and tags) for a specific measurement.
+
+```json
+{
+  "name": "get_measurement_schema",
+  "arguments": {
+    "measurement": "cpu_usage"
+  }
+}
+```
+
+#### 4. `get_recent_data`
+Get recent data for a specific measurement.
+
+```json
+{
+  "name": "get_recent_data",
+  "arguments": {
+    "measurement": "cpu_usage",
+    "limit": 100,
+    "time_range": "-1h"
+  }
+}
+```
+
+#### 5. `query_data_range`
+Query data within a specific time range with optional filters.
+
+```json
+{
+  "name": "query_data_range",
+  "arguments": {
+    "measurement": "cpu_usage",
+    "start_time": "-24h",
+    "end_time": "-1h",
+    "fields": ["usage_percent"],
+    "tags": {"host": "server1"},
+    "limit": 1000
+  }
+}
+```
+
+#### 6. `execute_flux_query`
+Execute a custom Flux query against the database.
+
+```json
+{
+  "name": "execute_flux_query",
+  "arguments": {
+    "query": "from(bucket: \"my-bucket\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"temperature\")"
+  }
+}
+```
+
+#### 7. `get_server_info`
+Get information about the MCP server and its configuration.
+
+```json
+{
+  "name": "get_server_info"
+}
+```
+
+### Example Queries
+
+#### Get system metrics for the last hour
+```flux
+from(bucket: "system")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "cpu" and r._field == "usage_percent")
+  |> aggregateWindow(every: 5m, fn: mean)
+```
+
+#### Find temperature anomalies
+```flux
+from(bucket: "sensors")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "temperature")
+  |> filter(fn: (r) => r._value > 80.0 or r._value < 10.0)
+```
+
+## Development
+
+### Project Structure
+
+```
+influxdb-mcp/
+├── src/
+│   └── influxdb_mcp/
+│       ├── __init__.py          # Package initialization
+│       ├── server.py            # FastMCP server implementation
+│       ├── config.py            # Configuration management
+│       └── influxdb_client.py   # InfluxDB client wrapper
+├── .env.example                 # Example environment configuration
+├── .vscode/
+│   └── mcp.json                # VS Code MCP server configuration
+├── pyproject.toml              # Project dependencies and metadata
+├── README.md                   # This file
+└── uv.lock                     # Dependency lock file
+```
+
+### Running Tests
+
+```bash
+# Install test dependencies
+uv sync --dev
+
+# Run tests (when implemented)
+uv run pytest
+```
+
+### Code Quality
+
+```bash
+# Format code
+uv run ruff format
+
+# Lint code
+uv run ruff check
+
+# Type checking
+uv run mypy src/
+```
+
+## VS Code Integration
+
+The project includes VS Code MCP server configuration in `.vscode/mcp.json`. This allows you to debug the MCP server directly in VS Code.
+
+To debug:
+1. Open the project in VS Code
+2. The MCP server configuration will be automatically detected
+3. Use the MCP debugging features in VS Code
+
+## Security Considerations
+
+- **Read-only access**: The server only supports read operations for security
+- **Token-based authentication**: Uses InfluxDB's built-in token authentication
+- **SSL/TLS support**: Configurable SSL connections for secure communication
+- **Environment variables**: Sensitive configuration stored in environment variables
+
+## Troubleshooting
+
+### Connection Issues
+
+1. **Verify InfluxDB is running**: Check that your InfluxDB instance is accessible
+2. **Check credentials**: Ensure your token, organization, and bucket are correct
+3. **Network connectivity**: Verify firewall rules and network connectivity
+4. **SSL configuration**: If using SSL, ensure certificates are valid
+
+### Common Errors
+
+- **"InfluxDB token cannot be empty"**: Set the `INFLUXDB_TOKEN` environment variable
+- **"Connection failed"**: Check host, port, and network connectivity
+- **"Organization not found"**: Verify the organization name is correct
+- **"Bucket not found"**: Ensure the bucket exists and is accessible
+
+### Debug Mode
+
+Enable debug logging by setting the log level:
+
+```bash
+export LOG_LEVEL=DEBUG
+uv run influxdb-mcp
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite and ensure all tests pass
+6. Submit a pull request
+
+## License
+
+[MIT License](LICENSE)
+
+## Related Projects
+
+- [FastMCP](https://github.com/jlowin/fastmcp) - High-performance MCP framework
+- [InfluxDB](https://github.com/influxdata/influxdb) - Time series database
+- [Model Context Protocol](https://github.com/modelcontextprotocol) - MCP specification
+
+## Support
+
+For support and questions:
+
+- **Issues**: Open an issue on GitHub
+- **Documentation**: See the [FastMCP documentation](https://fastmcp.com)
+- **InfluxDB**: See the [InfluxDB documentation](https://docs.influxdata.com)
