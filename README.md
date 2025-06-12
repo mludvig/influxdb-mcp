@@ -6,10 +6,9 @@ A FastMCP server providing read-only access to InfluxDB v2 databases. This serve
 
 - **Read-only operations** for security
 - **FastMCP framework** for high performance
-- **Comprehensive querying** capabilities
-- **Schema discovery** (measurements, fields, tags)
+- **Comprehensive querying** capabilities via custom Flux queries
+- **Schema discovery** (buckets and measurements)
 - **Custom Flux queries** support
-- **Time-range filtering** and data aggregation
 - **Environment-based configuration** via `.env` file
 - **uvx support** for easy installation and deployment
 
@@ -63,7 +62,6 @@ INFLUXDB_HOST=localhost
 INFLUXDB_PORT=8086
 INFLUXDB_TOKEN=your-influxdb-token-here
 INFLUXDB_ORG=your-organization-name
-INFLUXDB_BUCKET=your-bucket-name
 
 # Optional settings
 INFLUXDB_USE_SSL=false
@@ -79,7 +77,6 @@ INFLUXDB_TIMEOUT=10000
 | `INFLUXDB_PORT` | InfluxDB server port | `8086` | No |
 | `INFLUXDB_TOKEN` | Authentication token | - | **Yes** |
 | `INFLUXDB_ORG` | Organization name | - | **Yes** |
-| `INFLUXDB_BUCKET` | Bucket name | - | **Yes** |
 | `INFLUXDB_USE_SSL` | Use HTTPS connection | `false` | No |
 | `INFLUXDB_VERIFY_SSL` | Verify SSL certificates | `true` | No |
 | `INFLUXDB_TIMEOUT` | Request timeout (ms) | `10000` | No |
@@ -99,6 +96,8 @@ uvx influxdb-mcp
 python -m influxdb_mcp
 ```
 
+The server will start on `http://127.0.0.1:8000` by default, with the MCP endpoint available at `http://127.0.0.1:8000/mcp/`.
+
 ### Available Tools
 
 The server provides the following MCP tools:
@@ -112,60 +111,29 @@ Test the connection to InfluxDB and return status information.
 }
 ```
 
-#### 2. `list_measurements`
-List all available measurements in the configured bucket.
+#### 2. `list_buckets`
+List all buckets available in the InfluxDB organization.
 
 ```json
 {
-  "name": "list_measurements"
+  "name": "list_buckets"
 }
 ```
 
-#### 3. `get_measurement_schema`
-Get schema information (fields and tags) for a specific measurement.
+#### 3. `list_measurements`
+List all available measurements in a specific bucket.
 
 ```json
 {
-  "name": "get_measurement_schema",
+  "name": "list_measurements",
   "arguments": {
-    "measurement": "cpu_usage"
+    "bucket": "my-bucket"
   }
 }
 ```
 
-#### 4. `get_recent_data`
-Get recent data for a specific measurement.
-
-```json
-{
-  "name": "get_recent_data",
-  "arguments": {
-    "measurement": "cpu_usage",
-    "limit": 100,
-    "time_range": "-1h"
-  }
-}
-```
-
-#### 5. `query_data_range`
-Query data within a specific time range with optional filters.
-
-```json
-{
-  "name": "query_data_range",
-  "arguments": {
-    "measurement": "cpu_usage",
-    "start_time": "-24h",
-    "end_time": "-1h",
-    "fields": ["usage_percent"],
-    "tags": {"host": "server1"},
-    "limit": 1000
-  }
-}
-```
-
-#### 6. `execute_flux_query`
-Execute a custom Flux query against the database.
+#### 4. `execute_flux_query`
+Execute a custom Flux query against the InfluxDB database.
 
 ```json
 {
@@ -176,7 +144,7 @@ Execute a custom Flux query against the database.
 }
 ```
 
-#### 7. `get_server_info`
+#### 5. `get_server_info`
 Get information about the MCP server and its configuration.
 
 ```json
@@ -248,12 +216,34 @@ uv run mypy src/
 
 ## VS Code Integration
 
-The project includes VS Code MCP server configuration in `.vscode/mcp.json`. This allows you to debug the MCP server directly in VS Code.
+The project includes VS Code MCP server configuration in `.vscode/mcp.json`. This allows you to debug the MCP server directly in VS Code using HTTP transport.
 
 To debug:
 1. Open the project in VS Code
-2. The MCP server configuration will be automatically detected
-3. Use the MCP debugging features in VS Code
+2. Run the task "Run InfluxDB MCP Server (HTTP)" to start the server
+3. The MCP server configuration will be automatically detected at `http://127.0.0.1:8000/mcp`
+4. Use the MCP debugging features in VS Code to test the server
+
+### Client Connection
+
+To connect to the HTTP server from a FastMCP client:
+
+```python
+from fastmcp import Client
+import asyncio
+
+async def main():
+    async with Client("http://127.0.0.1:8000/mcp") as client:
+        # Test connection
+        tools = await client.list_tools()
+        print(f"Available tools: {tools}")
+        
+        # Test a tool
+        result = await client.call_tool("test_connection")
+        print(f"Connection test: {result}")
+
+asyncio.run(main())
+```
 
 ## Security Considerations
 

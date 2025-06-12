@@ -1,15 +1,16 @@
 [project]
 name = "influxdb-mcp"
 version = "0.1.0"
-description = "FastMCP server providing read-only access to InfluxDB v2 database"
+description = "MCP server providing read-only access to InfluxDB v2 database"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=0.7.0",
+    "mcp[cli]>=1.0.0",
     "influxdb-client>=1.44.0",
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.0.0",
+    "ipykernel>=6.0.0",
 ]
 [[project.authors]]
 name = "Michael Ludvig (CyberCX)"
