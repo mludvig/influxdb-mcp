@@ -130,6 +130,20 @@ python -m influxdb_mcp
 
 The server will start on `http://127.0.0.1:8000` by default, with the MCP endpoint available at `http://127.0.0.1:8000/mcp/`.
 
+#### Health Check
+
+A dedicated health check endpoint is available at `http://127.0.0.1:8000/healthcheck` for monitoring and Docker health checks. This endpoint returns:
+
+```json
+{
+  "status": "healthy",
+  "service": "influxdb-mcp",
+  "influxdb_status": "connected"
+}
+```
+
+The endpoint will return HTTP 200 for healthy status or HTTP 503 for unhealthy status.
+
 ### Available Tools
 
 The server provides the following MCP tools:

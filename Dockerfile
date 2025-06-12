@@ -21,26 +21,24 @@ RUN pip install uv
 # Create app directory
 WORKDIR /app
 
-# Copy dependency files
+# Copy all necessary files for the build
 COPY pyproject.toml uv.lock README.md ./
+COPY src/ ./src/
 
 # Install Python dependencies using uv
 RUN uv sync --frozen --no-dev
 
-# Copy source code
-COPY src/ ./src/
-
 # Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+RUN groupadd appuser && useradd -m -g appuser appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
 # Expose the default FastMCP HTTP port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/mcp/ || exit 1
+# Health check using the dedicated healthcheck endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/healthcheck || exit 1
 
 # Set the default command
 CMD ["uv", "run", "python", "-m", "influxdb_mcp"]

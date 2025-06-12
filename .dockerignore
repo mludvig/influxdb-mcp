@@ -49,8 +49,7 @@ Thumbs.db
 .git
 .gitignore
 
-# Documentation
-*.md
+# Documentation (exclude specific files but keep README.md for package build)
 docs/
 
 # Test files

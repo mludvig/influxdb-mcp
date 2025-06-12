@@ -3,13 +3,13 @@ MCP server providing read-only access to InfluxDB v2 database.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
 
 from mcp.server.fastmcp import FastMCP
-from pydantic import BaseModel, Field
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
-from .config import get_config, InfluxDBConfig
+from .config import get_config
 from .influxdb_client import InfluxDBManager
 
 # Set up logging
@@ -24,20 +24,46 @@ mcp = FastMCP(
     
     Available operations:
     - Test database connection
-    - List available organizations
     - List available buckets
     - List available measurements
-    - Get fields and tags for measurements  
-    - Query recent data
-    - Query data within time ranges
     - Execute custom Flux queries
+    - Get server information
     
     All operations are read-only for security.
     """,
 )
+mcp.settings.host = "0.0.0.0"
+mcp.settings.port = 8000
 
 # Global InfluxDB manager instance
 influxdb_manager: Optional[InfluxDBManager] = None
+
+
+@mcp.custom_route("/healthcheck", methods=["GET"])
+async def healthcheck(request: Request) -> JSONResponse:
+    """Simple healthcheck endpoint for Docker health monitoring."""
+    try:
+        # Test basic server availability
+        server_status = {
+            "status": "healthy",
+            "service": "influxdb-mcp",
+        }
+
+        # Optionally test InfluxDB connection if available
+        try:
+            manager = get_influxdb_manager()
+            connection_status = manager.test_connection()
+            server_status["influxdb_status"] = connection_status["status"]
+        except Exception as e:
+            # Don't fail healthcheck if InfluxDB is down, just report it
+            server_status["influxdb_status"] = "error"
+            server_status["influxdb_error"] = str(e)
+
+        return JSONResponse(server_status)
+    except Exception as e:
+        return JSONResponse(
+            {"status": "unhealthy", "error": str(e)}, status_code=503
+        )
 
 
 def get_influxdb_manager() -> InfluxDBManager:
@@ -48,29 +74,6 @@ def get_influxdb_manager() -> InfluxDBManager:
         influxdb_manager = InfluxDBManager(config)
         influxdb_manager.connect()
     return influxdb_manager
-
-
-class QueryDataRequest(BaseModel):
-    """Request model for querying data within a time range."""
-
-    measurement: str = Field(..., description="Name of the measurement to query")
-    start_time: str = Field(
-        ..., description="Start time (e.g., '-1h', '2024-01-01T00:00:00Z')"
-    )
-    end_time: Optional[str] = Field(None, description="End time (optional)")
-    fields: Optional[List[str]] = Field(
-        None, description="Specific fields to query (optional)"
-    )
-    tags: Optional[Dict[str, str]] = Field(None, description="Tag filters (optional)")
-    limit: Optional[int] = Field(
-        None, description="Maximum number of records to return"
-    )
-
-
-class FluxQueryRequest(BaseModel):
-    """Request model for executing custom Flux queries."""
-
-    query: str = Field(..., description="Flux query to execute")
 
 
 @mcp.tool()
@@ -149,14 +152,6 @@ def get_server_info() -> Dict[str, Any]:
                 "use_ssl": config.use_ssl,
                 "timeout": config.timeout,
             },
-            # "capabilities": [
-            #     "test_connection",
-            #     "list_buckets",
-            #     "list_measurements",
-            #     "get_recent_data",
-            #     "query_data_range",
-            #     "execute_flux_query",
-            # ]
         }
     except Exception as e:
         logger.error(f"Failed to get server info: {e}")
