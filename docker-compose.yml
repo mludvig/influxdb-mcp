@@ -1,0 +1,47 @@
+services:
+  influxdb-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Override these with your actual InfluxDB settings
+      - INFLUXDB_HOST=${INFLUXDB_HOST:-localhost}
+      - INFLUXDB_PORT=${INFLUXDB_PORT:-8086}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
+      - INFLUXDB_USE_SSL=${INFLUXDB_USE_SSL:-false}
+      - INFLUXDB_VERIFY_SSL=${INFLUXDB_VERIFY_SSL:-true}
+      - INFLUXDB_TIMEOUT=${INFLUXDB_TIMEOUT:-10000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Mount .env file for local development
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/mcp/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Include InfluxDB for complete stack testing
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword
+      - DOCKER_INFLUXDB_INIT_ORG=myorg
+      - DOCKER_INFLUXDB_INIT_BUCKET=mybucket
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=mytoken
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    restart: unless-stopped
+    profiles:
+      - with-influxdb
+
+volumes:
+  influxdb-data:

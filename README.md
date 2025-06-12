@@ -31,6 +31,28 @@ uvx --from git+https://github.com/your-repo/influxdb-mcp influxdb-mcp
 uvx install influxdb-mcp
 ```
 
+### Using Docker (Recommended for Production)
+
+```bash
+# Build the Docker image
+docker build -t influxdb-mcp .
+
+# Run with environment variables
+docker run -d \
+  --name influxdb-mcp \
+  -p 8000:8000 \
+  -e INFLUXDB_HOST=your-influxdb-host \
+  -e INFLUXDB_TOKEN=your-token \
+  -e INFLUXDB_ORG=your-org \
+  influxdb-mcp
+
+# Or use docker-compose
+docker-compose up -d
+
+# To include a local InfluxDB instance for testing
+docker-compose --profile with-influxdb up -d
+```
+
 ### Development Installation
 
 ```bash
@@ -91,6 +113,16 @@ uv run influxdb-mcp
 
 # Using uvx
 uvx influxdb-mcp
+
+# Using Docker
+docker run -d \
+  --name influxdb-mcp \
+  -p 8000:8000 \
+  --env-file .env \
+  influxdb-mcp
+
+# Using docker-compose
+docker-compose up -d
 
 # Direct Python execution
 python -m influxdb_mcp
@@ -273,8 +305,34 @@ asyncio.run(main())
 Enable debug logging by setting the log level:
 
 ```bash
+# Native installation
 export LOG_LEVEL=DEBUG
 uv run influxdb-mcp
+
+# Docker
+docker run -e LOG_LEVEL=DEBUG influxdb-mcp
+
+# Docker Compose
+LOG_LEVEL=DEBUG docker-compose up
+```
+
+### Docker Troubleshooting
+
+**Container Health Check**: Check if the container is healthy:
+```bash
+docker ps
+docker logs influxdb-mcp
+```
+
+**Network Issues**: If running InfluxDB in another container:
+```bash
+# Use container name or service name as host
+docker run -e INFLUXDB_HOST=influxdb influxdb-mcp
+```
+
+**Volume Mounting**: For persistent configuration:
+```bash
+docker run -v $(pwd)/.env:/app/.env:ro influxdb-mcp
 ```
 
 ## Contributing
