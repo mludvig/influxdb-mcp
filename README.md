@@ -199,6 +199,37 @@ Get information about the MCP server and its configuration.
 }
 ```
 
+### Available Resources
+
+The server provides sample Flux query templates as MCP resources. These are ready-to-use query templates for common time-series analysis patterns:
+
+#### 1. `flux://queries/daily-hourly-average`
+**Daily Hourly Average Query** - Retrieves the last 1 day of a measurement with hourly averages.
+
+#### 2. `flux://queries/weekly-daily-summary`
+**Weekly Daily Summary Query** - Retrieves the last 7 days of data with daily summaries (min, max, mean).
+
+#### 3. `flux://queries/anomaly-detection`
+**Anomaly Detection Query** - Detects anomalies using statistical outliers (values beyond 2 standard deviations).
+
+#### 4. `flux://queries/top-n-values`
+**Top N Values Query** - Finds the top N highest values in a time range.
+
+#### 5. `flux://queries/rate-of-change`
+**Rate of Change Query** - Calculates the rate of change between consecutive measurements.
+
+#### 6. `flux://queries/moving-average`
+**Moving Average Query** - Calculates a moving average over a specified window.
+
+#### 7. `flux://queries/downsampling`
+**Data Downsampling Query** - Downsamples high-frequency data to lower frequency with aggregation.
+
+#### 8. `flux://queries/correlation-analysis`
+**Correlation Analysis Query** - Analyzes correlation between two measurements.
+
+#### 9. `flux://queries/threshold-monitoring`
+**Threshold Monitoring Query** - Monitors values that cross specified thresholds.
+
 ### Example Queries
 
 #### Get system metrics for the last hour
@@ -283,7 +314,7 @@ async def main():
         # Test connection
         tools = await client.list_tools()
         print(f"Available tools: {tools}")
-        
+
         # Test a tool
         result = await client.call_tool("test_connection")
         print(f"Connection test: {result}")
