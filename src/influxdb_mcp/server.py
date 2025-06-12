@@ -19,18 +19,17 @@ logger = logging.getLogger(__name__)
 # Initialize FastMCP server
 mcp = FastMCP(
     name="influxdb-mcp",
-    instructions="""
-    This MCP server provides read-only access to an InfluxDB v2 database.
+    instructions="""This MCP server provides read-only access to an InfluxDB v2 database.
 
-    Available operations:
-    - Test database connection
-    - List available buckets
-    - List available measurements
-    - Execute custom Flux queries
-    - Get server information
+Available operations:
+- Test database connection and get status information
+- List available buckets in the InfluxDB instance
+- List available measurements within a specific bucket
+- Execute custom Flux queries for data analysis
+- Get server configuration information
+- Access sample Flux query templates for common use cases
 
-    All operations are read-only for security.
-    """,
+All operations are read-only for security. Use the available tools to explore time-series data, perform analytics, and monitor your InfluxDB metrics. The server also provides resource templates for common Flux query patterns like anomaly detection, correlation analysis, and threshold monitoring.""",
 )
 mcp.settings.host = "0.0.0.0"
 mcp.settings.port = 8000
@@ -76,7 +75,7 @@ def get_influxdb_manager() -> InfluxDBManager:
 
 @mcp.tool()
 def test_connection() -> Dict[str, Any]:
-    """Test the connection to InfluxDB and return status information."""
+    """Test the connection to InfluxDB and return detailed status information including server version and health."""
     try:
         manager = get_influxdb_manager()
         return manager.test_connection()
@@ -87,7 +86,7 @@ def test_connection() -> Dict[str, Any]:
 
 @mcp.tool()
 def list_buckets() -> Dict[str, Any]:
-    """List all buckets, optionally filtered by organization name."""
+    """List all available buckets in the InfluxDB instance with their retention policies and organization details."""
     try:
         manager = get_influxdb_manager()
         buckets = manager.list_buckets()
@@ -103,7 +102,7 @@ def list_buckets() -> Dict[str, Any]:
 
 @mcp.tool()
 def list_measurements(bucket: str) -> Dict[str, Any]:
-    """List all available measurements in the configured InfluxDB bucket."""
+    """List all available measurements (time series) in the specified InfluxDB bucket along with their fields and tags."""
     try:
         manager = get_influxdb_manager()
         measurements = manager.list_measurements(bucket)
@@ -119,7 +118,7 @@ def list_measurements(bucket: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def execute_flux_query(query: str) -> Dict[str, Any]:
-    """Execute a custom Flux query against the InfluxDB database."""
+    """Execute a custom Flux query against the InfluxDB database. Supports aggregations, filtering, transformations, and analytics operations. Returns structured time-series data."""
     try:
         manager = get_influxdb_manager()
         data = manager.execute_query(query)
@@ -137,7 +136,7 @@ def execute_flux_query(query: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def get_server_info() -> Dict[str, Any]:
-    """Get information about the MCP server and its configuration."""
+    """Get comprehensive information about the MCP server including version, InfluxDB configuration, and connection settings."""
     try:
         config = get_config()
         return {
