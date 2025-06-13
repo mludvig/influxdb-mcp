@@ -3,7 +3,9 @@ MCP server providing read-only access to InfluxDB v2 database.
 """
 
 import os
+import json
 import logging
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -163,62 +165,179 @@ def get_server_info() -> Dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
-# MCP Resources - Sample Flux Queries
+# MCP Resources - Live Data Access and Dynamic Queries
 @mcp.resource(
-    uri="flux://queries/daily-hourly-average",
-    name="Daily Hourly Average Query",
-    description="Flux query to retrieve the last 1 day of a measurement with hourly averages",
+    uri="influxdb://buckets",
+    name="Available InfluxDB Buckets",
+    description="Live list of all available buckets in the InfluxDB instance with metadata",
+    mime_type="application/json",
+)
+def get_buckets_resource() -> str:
+    """Returns current list of available buckets as JSON."""
+    try:
+        manager = get_influxdb_manager()
+        buckets = manager.list_buckets()
+        return json.dumps({
+            "buckets": buckets,
+            "count": len(buckets),
+            "timestamp": datetime.now().isoformat()
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e), "timestamp": datetime.now().isoformat()})
+
+@mcp.resource(
+    uri="influxdb://measurements/{bucket}",
+    name="Measurements in Bucket",
+    description="Live list of measurements available in the specified bucket",
+    mime_type="application/json",
+)
+def get_measurements_resource(bucket: str) -> str:
+    """Returns current measurements in the specified bucket."""
+    try:
+        manager = get_influxdb_manager()
+        measurements = manager.list_measurements(bucket)
+        return json.dumps({
+            "bucket": bucket,
+            "measurements": measurements,
+            "count": len(measurements),
+            "timestamp": datetime.now().isoformat()
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e), "bucket": bucket, "timestamp": datetime.now().isoformat()})
+
+@mcp.resource(
+    uri="influxdb://status",
+    name="InfluxDB Connection Status",
+    description="Current connection status and server information",
+    mime_type="application/json",
+)
+def get_status_resource() -> str:
+    """Returns current InfluxDB connection status and server info."""
+    try:
+        manager = get_influxdb_manager()
+        status = manager.test_connection()
+        config = get_config()
+        return json.dumps({
+            "connection_status": status,
+            "server_config": {
+                "url": config.url,
+                "org": config.org,
+                "timeout": config.timeout
+            },
+            "timestamp": datetime.now().isoformat()
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e), "timestamp": datetime.now().isoformat()})
+
+@mcp.resource(
+    uri="flux://templates/daily-hourly-average/{bucket}/{measurement}/{field}",
+    name="Daily Hourly Average Query Template",
+    description="Flux query template for hourly averages over the last day",
     mime_type="text/plain",
 )
-def get_daily_hourly_average_query() -> str:
-    """Returns a Flux query template for retrieving daily data with hourly averages."""
-    return """// Query: Last 1 day of data with hourly averages
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', and 'YOUR_FIELD' with actual values
+def get_daily_hourly_average_query(bucket: str, measurement: str, field: str) -> str:
+    """Returns a ready-to-execute Flux query for daily hourly averages."""
+    return f"""// Query: Last 1 day of data with hourly averages
+// Generated: {datetime.now().isoformat()}
+// Bucket: {bucket}, Measurement: {measurement}, Field: {field}
 
-from(bucket: "YOUR_BUCKET")
+from(bucket: "{bucket}")
   |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{field}")
   |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
   |> yield(name: "hourly_average")"""
 
 
 @mcp.resource(
-    uri="flux://queries/weekly-daily-summary",
-    name="Weekly Daily Summary Query",
-    description="Flux query to retrieve the last 7 days of data with daily summaries (min, max, mean)",
+    uri="flux://templates/weekly-summary/{bucket}/{measurement}/{field}",
+    name="Weekly Daily Summary Query Template",
+    description="Flux query template for weekly data with daily summaries (min, max, mean)",
     mime_type="text/plain",
 )
-def get_weekly_daily_summary_query() -> str:
-    """Returns a Flux query template for weekly data with daily summaries."""
-    return """// Query: Last 7 days with daily min/max/mean summaries
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', and 'YOUR_FIELD' with actual values
+def get_weekly_daily_summary_query(bucket: str, measurement: str, field: str) -> str:
+    """Returns a ready-to-execute Flux query for weekly summaries."""
+    return f"""// Query: Last 7 days with daily min/max/mean summaries
+// Generated: {datetime.now().isoformat()}
+// Bucket: {bucket}, Measurement: {measurement}, Field: {field}
 
 import "experimental"
 
-data = from(bucket: "YOUR_BUCKET")
+data = from(bucket: "{bucket}")
   |> range(start: -7d)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{field}")
 
 union(tables: [
-  data |> aggregateWindow(every: 1d, fn: min, createEmpty: false) |> set(key: "_field", value: "YOUR_FIELD_min"),
-  data |> aggregateWindow(every: 1d, fn: max, createEmpty: false) |> set(key: "_field", value: "YOUR_FIELD_max"),
-  data |> aggregateWindow(every: 1d, fn: mean, createEmpty: false) |> set(key: "_field", value: "YOUR_FIELD_mean")
+  data |> aggregateWindow(every: 1d, fn: min, createEmpty: false) |> set(key: "_field", value: "{field}_min"),
+  data |> aggregateWindow(every: 1d, fn: max, createEmpty: false) |> set(key: "_field", value: "{field}_max"),
+  data |> aggregateWindow(every: 1d, fn: mean, createEmpty: false) |> set(key: "_field", value: "{field}_mean")
 ])
   |> sort(columns: ["_time"])
   |> yield(name: "daily_summary")"""
 
-
 @mcp.resource(
-    uri="flux://queries/anomaly-detection",
-    name="Anomaly Detection Query",
-    description="Flux query to detect anomalies using statistical outliers (values beyond 2 standard deviations)",
+    uri="flux://templates/recent-data/{bucket}/{measurement}/{field}/{duration}",
+    name="Recent Data Query Template",
+    description="Flux query template for retrieving recent data with configurable time range",
     mime_type="text/plain",
 )
-def get_anomaly_detection_query() -> str:
+def get_recent_data_query(bucket: str, measurement: str, field: str, duration: str = "1h") -> str:
+    """Returns a ready-to-execute Flux query for recent data."""
+    return f"""// Query: Recent data for the last {duration}
+// Generated: {datetime.now().isoformat()}
+// Bucket: {bucket}, Measurement: {measurement}, Field: {field}
+
+from(bucket: "{bucket}")
+  |> range(start: -{duration})
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{field}")
+  |> sort(columns: ["_time"])
+  |> yield(name: "recent_data")"""
+
+@mcp.resource(
+    uri="flux://templates/threshold-alerts/{bucket}/{measurement}/{field}/{threshold}",
+    name="Threshold Alert Query Template", 
+    description="Flux query template for monitoring values that exceed a specific threshold",
+    mime_type="text/plain",
+)
+def get_threshold_alert_query(bucket: str, measurement: str, field: str, threshold: str) -> str:
+    """Returns a ready-to-execute Flux query for threshold monitoring."""
+    try:
+        threshold_value = float(threshold)
+    except ValueError:
+        threshold_value = 80.0  # Default threshold
+    
+    return f"""// Query: Monitor values exceeding threshold of {threshold_value}
+// Generated: {datetime.now().isoformat()}
+// Bucket: {bucket}, Measurement: {measurement}, Field: {field}
+
+from(bucket: "{bucket}")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{field}")
+  |> filter(fn: (r) => r._value > {threshold_value})
+  |> map(fn: (r) => ({{
+      r with
+      alert_level: if r._value > {threshold_value * 1.5} then "critical"
+                   else if r._value > {threshold_value * 1.2} then "warning"
+                   else "info",
+      threshold_exceeded: r._value - {threshold_value}
+    }}))
+  |> yield(name: "threshold_alerts")"""
+
+
+@mcp.resource(
+    uri="flux://templates/anomaly-detection/{bucket}/{measurement}/{field}",
+    name="Anomaly Detection Query Template",
+    description="Flux query template to detect statistical anomalies using standard deviation",
+    mime_type="text/plain",
+)
+def get_anomaly_detection_query(bucket: str = "YOUR_BUCKET", measurement: str = "YOUR_MEASUREMENT", field: str = "YOUR_FIELD") -> str:
     """Returns a Flux query template for detecting statistical anomalies."""
-    return """// Query: Detect anomalies using statistical outliers
+    if bucket == "YOUR_BUCKET":
+        # Return generic template
+        return """// Query: Detect anomalies using statistical outliers
 // Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', and 'YOUR_FIELD' with actual values
 
 import "experimental/stats"
@@ -240,153 +359,70 @@ data
     }))
   |> filter(fn: (r) => r._anomaly == true)
   |> yield(name: "anomalies")"""
+    else:
+        # Return customized template
+        return f"""// Query: Detect anomalies using statistical outliers
+// Generated: {datetime.now().isoformat()}
+// Bucket: {bucket}, Measurement: {measurement}, Field: {field}
 
+import "experimental/stats"
 
-@mcp.resource(
-    uri="flux://queries/top-n-values",
-    name="Top N Values Query",
-    description="Flux query to find the top N highest values in a time range",
-    mime_type="text/plain",
-)
-def get_top_n_values_query() -> str:
-    """Returns a Flux query template for finding top N values."""
-    return """// Query: Find top N highest values in time range
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', 'YOUR_FIELD', and N with actual values
+data = from(bucket: "{bucket}")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{field}")
 
-from(bucket: "YOUR_BUCKET")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
-  |> top(n: 10)  // Change 10 to desired number of top values
-  |> sort(columns: ["_value"], desc: true)
-  |> yield(name: "top_values")"""
+// Calculate mean and standard deviation
+stats = data
+  |> stats.linearRegression()
 
-
-@mcp.resource(
-    uri="flux://queries/rate-of-change",
-    name="Rate of Change Query",
-    description="Flux query to calculate the rate of change between consecutive measurements",
-    mime_type="text/plain",
-)
-def get_rate_of_change_query() -> str:
-    """Returns a Flux query template for calculating rate of change."""
-    return """// Query: Calculate rate of change between consecutive measurements
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', and 'YOUR_FIELD' with actual values
-
-from(bucket: "YOUR_BUCKET")
-  |> range(start: -2h)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
-  |> sort(columns: ["_time"])
-  |> derivative(unit: 1m, nonNegative: false)  // Rate per minute
-  |> yield(name: "rate_of_change")"""
-
+// Find outliers (values beyond 2 standard deviations)
+data
+  |> map(fn: (r) => ({{
+      r with
+      _anomaly: math.abs(x: r._value - stats.slope) > (2.0 * stats.stderr)
+    }}))
+  |> filter(fn: (r) => r._anomaly == true)
+  |> yield(name: "anomalies")"""
 
 @mcp.resource(
-    uri="flux://queries/moving-average",
-    name="Moving Average Query",
-    description="Flux query to calculate a moving average over a specified window",
+    uri="flux://templates/correlation/{bucket}/{measurement1}/{field1}/{measurement2}/{field2}",
+    name="Correlation Analysis Query Template",
+    description="Flux query template to analyze correlation between two measurements",
     mime_type="text/plain",
 )
-def get_moving_average_query() -> str:
-    """Returns a Flux query template for calculating moving averages."""
-    return """// Query: Calculate moving average with specified window
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', and 'YOUR_FIELD' with actual values
-
-from(bucket: "YOUR_BUCKET")
-  |> range(start: -6h)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
-  |> sort(columns: ["_time"])
-  |> movingAverage(n: 5)  // 5-point moving average
-  |> yield(name: "moving_average")"""
-
-
-@mcp.resource(
-    uri="flux://queries/downsampling",
-    name="Data Downsampling Query",
-    description="Flux query to downsample high-frequency data to lower frequency with aggregation",
-    mime_type="text/plain",
-)
-def get_downsampling_query() -> str:
-    """Returns a Flux query template for downsampling data."""
-    return """// Query: Downsample high-frequency data to lower frequency
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', and 'YOUR_FIELD' with actual values
-
-from(bucket: "YOUR_BUCKET")
-  |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
-  |> aggregateWindow(
-      every: 5m,        // Downsample to 5-minute intervals
-      fn: mean,         // Use mean aggregation (can be min, max, median, etc.)
-      createEmpty: false
-    )
-  |> yield(name: "downsampled")"""
-
-
-@mcp.resource(
-    uri="flux://queries/correlation-analysis",
-    name="Correlation Analysis Query",
-    description="Flux query to analyze correlation between two measurements",
-    mime_type="text/plain",
-)
-def get_correlation_analysis_query() -> str:
-    """Returns a Flux query template for correlation analysis between measurements."""
-    return """// Query: Analyze correlation between two measurements
-// Replace bucket, measurement, and field names with actual values
+def get_correlation_analysis_query(bucket: str, measurement1: str, field1: str, measurement2: str, field2: str) -> str:
+    """Returns a ready-to-execute Flux query for correlation analysis."""
+    return f"""// Query: Analyze correlation between two measurements
+// Generated: {datetime.now().isoformat()}
+// Comparing {measurement1}.{field1} with {measurement2}.{field2}
 
 import "experimental/join"
 
 // First measurement
-measurement1 = from(bucket: "YOUR_BUCKET")
+measurement1 = from(bucket: "{bucket}")
   |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "MEASUREMENT_1")
-  |> filter(fn: (r) => r._field == "FIELD_1")
+  |> filter(fn: (r) => r._measurement == "{measurement1}")
+  |> filter(fn: (r) => r._field == "{field1}")
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
 
 // Second measurement
-measurement2 = from(bucket: "YOUR_BUCKET")
+measurement2 = from(bucket: "{bucket}")
   |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "MEASUREMENT_2")
-  |> filter(fn: (r) => r._field == "FIELD_2")
+  |> filter(fn: (r) => r._measurement == "{measurement2}")
+  |> filter(fn: (r) => r._field == "{field2}")
   |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
 
-// Join and calculate correlation
+// Join and calculate correlation metrics
 join.time(left: measurement1, right: measurement2)
-  |> map(fn: (r) => ({
+  |> map(fn: (r) => ({{
       _time: r._time,
-      measurement1_value: r._value_left,
-      measurement2_value: r._value_right,
-      correlation: r._value_left * r._value_right  // Simple correlation metric
-    }))
+      {field1}_value: r._value_left,
+      {field2}_value: r._value_right,
+      correlation: r._value_left * r._value_right,  // Simple correlation metric
+      ratio: if r._value_right != 0.0 then r._value_left / r._value_right else 0.0
+    }}))
   |> yield(name: "correlation")"""
-
-
-@mcp.resource(
-    uri="flux://queries/threshold-monitoring",
-    name="Threshold Monitoring Query",
-    description="Flux query to monitor values that cross specified thresholds",
-    mime_type="text/plain",
-)
-def get_threshold_monitoring_query() -> str:
-    """Returns a Flux query template for threshold monitoring."""
-    return """// Query: Monitor values crossing specified thresholds
-// Replace 'YOUR_BUCKET', 'YOUR_MEASUREMENT', 'YOUR_FIELD' and thresholds with actual values
-
-from(bucket: "YOUR_BUCKET")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "YOUR_MEASUREMENT")
-  |> filter(fn: (r) => r._field == "YOUR_FIELD")
-  |> map(fn: (r) => ({
-      r with
-      status: if r._value > 80.0 then "critical"
-              else if r._value > 60.0 then "warning"
-              else if r._value < 10.0 then "low"
-              else "normal"
-    }))
-  |> filter(fn: (r) => r.status != "normal")  // Only show threshold violations
-  |> yield(name: "threshold_violations")"""
 
 
 def main():
