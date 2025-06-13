@@ -33,12 +33,22 @@ RUN groupadd appuser && useradd -m -g appuser appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
+ENV MCP_LISTEN_HOST=0.0.0.0 \
+    MCP_LISTEN_PORT=5001 \
+    MCP_PROTOCOL=streamable-http
+
 # Expose the default FastMCP HTTP port
-EXPOSE 8000
+EXPOSE ${MCP_LISTEN_PORT}
 
 # Health check using the dedicated healthcheck endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/healthcheck || exit 1
+    CMD curl -f -s \
+            http://localhost:${MCP_LISTEN_PORT}/mcp/ \
+            -H "Accept: application/json, text/event-stream" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d '{"jsonrpc": "2.0", "method": "ping", "id": 1}' \
+    || exit 1
 
 # Set the default command
 CMD ["uv", "run", "python", "-m", "influxdb_mcp"]

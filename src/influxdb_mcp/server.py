@@ -2,6 +2,7 @@
 MCP server providing read-only access to InfluxDB v2 database.
 """
 
+import os
 import logging
 from typing import Dict, Any, Optional
 
@@ -30,9 +31,16 @@ Available operations:
 - Access sample Flux query templates for common use cases
 
 All operations are read-only for security. Use the available tools to explore time-series data, perform analytics, and monitor your InfluxDB metrics. The server also provides resource templates for common Flux query patterns like anomaly detection, correlation analysis, and threshold monitoring.""",
+    stateless_http=True,
+    description="MCP server providing read-only access to InfluxDB v2 database",
 )
-mcp.settings.host = "0.0.0.0"
-mcp.settings.port = 8000
+mcp.settings.host = os.getenv("MCP_LISTEN_HOST", "127.0.0.1")
+mcp.settings.port = int(os.getenv("MCP_LISTEN_PORT", "5001"))  # Default to port 5001 if not set
+MCP_PROTOCOL = os.getenv("MCP_PROTOCOL", "streamable-http").lower()
+if MCP_PROTOCOL not in ["streamable-http", "stdio"]:
+    raise ValueError(
+        f"Invalid MCP_PROTOCOL: {MCP_PROTOCOL}. Supported modes are 'streamable-http' and 'stdio'."
+    )
 
 # Global InfluxDB manager instance
 influxdb_manager: Optional[InfluxDBManager] = None
@@ -407,8 +415,7 @@ def main():
             logger.warning("Server will start but InfluxDB operations may fail")
 
         # Run the FastMCP server with HTTP transport (this handles its own async event loop)
-        mcp.run(transport="streamable-http")
-        # mcp.run(transport="stdio")
+        mcp.run(transport=MCP_PROTOCOL) # type: ignore
 
     except KeyboardInterrupt:
         logger.info("Server stopped by user")

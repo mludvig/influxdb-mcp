@@ -2,7 +2,7 @@ services:
   influxdb-mcp:
     build: .
     ports:
-      - "8000:8000"
+      - "5001:5001"
     environment:
       # Override these with your actual InfluxDB settings
       - INFLUXDB_HOST=${INFLUXDB_HOST:-localhost}
@@ -19,7 +19,7 @@ services:
       - ./.env:/app/.env:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthcheck"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3

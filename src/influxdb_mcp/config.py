@@ -2,8 +2,6 @@
 Configuration module for InfluxDB MCP server.
 """
 
-import os
-from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 
@@ -69,7 +67,7 @@ def get_config() -> InfluxDBConfig:
         "yes",
     )
     timeout = int(
-        os.getenv("INFLUXDB_TIMEOUT", "1000")
+        os.getenv("INFLUXDB_TIMEOUT", "5000")
     )  # Default timeout in milliseconds
 
     return InfluxDBConfig(
