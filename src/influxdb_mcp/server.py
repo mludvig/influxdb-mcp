@@ -38,10 +38,10 @@ All operations are read-only for security. Use the available tools to explore ti
 )
 mcp.settings.host = os.getenv("MCP_LISTEN_HOST", "127.0.0.1")
 mcp.settings.port = int(os.getenv("MCP_LISTEN_PORT", "5001"))  # Default to port 5001 if not set
-MCP_PROTOCOL = os.getenv("MCP_PROTOCOL", "streamable-http").lower()
-if MCP_PROTOCOL not in ["streamable-http", "stdio"]:
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "streamable-http").lower()
+if MCP_TRANSPORT not in ["sse", "streamable-http", "stdio"]:
     raise ValueError(
-        f"Invalid MCP_PROTOCOL: {MCP_PROTOCOL}. Supported modes are 'streamable-http' and 'stdio'."
+        f"Invalid MCP_TRANSPORT: {MCP_TRANSPORT}. Supported modes are 'sse' (deprecated), 'streamable-http' (default) and 'stdio'."
     )
 
 # Global InfluxDB manager instance
@@ -450,8 +450,8 @@ def main():
             logger.error(f"Failed to initialize InfluxDB connection: {e}")
             logger.warning("Server will start but InfluxDB operations may fail")
 
-        # Run the FastMCP server with HTTP transport (this handles its own async event loop)
-        mcp.run(transport=MCP_PROTOCOL) # type: ignore
+        # Start the FastMCP server
+        mcp.run(transport=MCP_TRANSPORT) # type: ignore
 
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
