@@ -1,20 +1,36 @@
 [project]
 name = "influxdb-mcp"
-version = "0.1.0"
-description = "MCP server providing read-only access to InfluxDB v2 database"
+description = "MCP server providing read-only access to InfluxDB v2 databases"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
-    "mcp[cli]>=1.0.0",
+    "mcp[cli]>=1.9.0",
     "influxdb-client>=1.44.0",
     "python-dotenv>=1.0.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.0.0",
-    "ipykernel>=6.0.0",
 ]
+license = {text = "MIT"}
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "src/influxdb_mcp/__init__.py"
+
+[project.optional-dependencies]
+dev = [
+    "hatch",
+    "pytest",
+    "black",
+    "ruff",
+    "mypy",
+    "pylint",
+    "pytest-cov",
+    "pre-commit",
+]
+
 [[project.authors]]
-name = "Michael Ludvig (CyberCX)"
-email = "michael.ludvig@cybercx.co.nz"
+name = "Michael Ludvig"
+email = "mludvig@logix.net.nz"
 
 [build-system]
 requires = [ "hatchling",]
