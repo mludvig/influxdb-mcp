@@ -5,7 +5,6 @@ InfluxDB client and operations module.
 import json
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
 from influxdb_client.client.influxdb_client import InfluxDBClient
 from influxdb_client.client.query_api import QueryApi
 from influxdb_client.client.flux_table import TableList
@@ -120,11 +119,6 @@ class InfluxDBManager:
 
     def list_measurements(self, bucket: str) -> List[Dict[str, Any]]:
         """Get list of available measurements in the bucket."""
-        query = f"""
-        import "influxdata/influxdb/schema"
-
-        schema.measurements(bucket: "{bucket}")
-        """
 
         try:
             # List all measurements in a bucket using flux query

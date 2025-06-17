@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Initialize FastMCP server
 mcp = FastMCP(
     name="influxdb-mcp",
-    instructions="""This MCP server provides read-only access to an InfluxDB v2 database.
+    instructions="""This MCP server provides read-only access to InfluxDB v2 databases.
 
 Available operations:
 - Test database connection and get status information
@@ -32,9 +32,12 @@ Available operations:
 - Get server configuration information
 - Access sample Flux query templates for common use cases
 
-All operations are read-only for security. Use the available tools to explore time-series data, perform analytics, and monitor your InfluxDB metrics. The server also provides resource templates for common Flux query patterns like anomaly detection, correlation analysis, and threshold monitoring.""",
+All operations are read-only for security. Use the available tools to explore
+time-series data, perform analytics, and monitor your InfluxDB metrics. The
+server also provides resource templates for common Flux query patterns like
+anomaly detection, correlation analysis, and threshold monitoring.""",
     stateless_http=True,
-    description="MCP server providing read-only access to InfluxDB v2 database",
+    description="MCP server providing read-only access to InfluxDB v2 databases",
 )
 mcp.settings.host = os.getenv("MCP_LISTEN_HOST", "127.0.0.1")
 mcp.settings.port = int(os.getenv("MCP_LISTEN_PORT", "5001"))  # Default to port 5001 if not set
