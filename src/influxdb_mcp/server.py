@@ -177,13 +177,12 @@ def get_buckets_resource() -> str:
     try:
         manager = get_influxdb_manager()
         buckets = manager.list_buckets()
-        return json.dumps({
-            "buckets": buckets,
-            "count": len(buckets),
-            "timestamp": datetime.now().isoformat()
-        }, indent=2)
+        return json.dumps(
+            {"buckets": buckets, "count": len(buckets), "timestamp": datetime.now().isoformat()}, indent=2
+        )
     except Exception as e:
         return json.dumps({"error": str(e), "timestamp": datetime.now().isoformat()})
+
 
 @mcp.resource(
     uri="influxdb://measurements/{bucket}",
@@ -196,14 +195,18 @@ def get_measurements_resource(bucket: str) -> str:
     try:
         manager = get_influxdb_manager()
         measurements = manager.list_measurements(bucket)
-        return json.dumps({
-            "bucket": bucket,
-            "measurements": measurements,
-            "count": len(measurements),
-            "timestamp": datetime.now().isoformat()
-        }, indent=2)
+        return json.dumps(
+            {
+                "bucket": bucket,
+                "measurements": measurements,
+                "count": len(measurements),
+                "timestamp": datetime.now().isoformat(),
+            },
+            indent=2,
+        )
     except Exception as e:
         return json.dumps({"error": str(e), "bucket": bucket, "timestamp": datetime.now().isoformat()})
+
 
 @mcp.resource(
     uri="influxdb://status",
@@ -217,17 +220,17 @@ def get_status_resource() -> str:
         manager = get_influxdb_manager()
         status = manager.test_connection()
         config = get_config()
-        return json.dumps({
-            "connection_status": status,
-            "server_config": {
-                "url": config.url,
-                "org": config.org,
-                "timeout": config.timeout
+        return json.dumps(
+            {
+                "connection_status": status,
+                "server_config": {"url": config.url, "org": config.org, "timeout": config.timeout},
+                "timestamp": datetime.now().isoformat(),
             },
-            "timestamp": datetime.now().isoformat()
-        }, indent=2)
+            indent=2,
+        )
     except Exception as e:
         return json.dumps({"error": str(e), "timestamp": datetime.now().isoformat()})
+
 
 @mcp.resource(
     uri="flux://templates/daily-hourly-average/{bucket}/{measurement}/{field}",
@@ -276,6 +279,7 @@ union(tables: [
   |> sort(columns: ["_time"])
   |> yield(name: "daily_summary")"""
 
+
 @mcp.resource(
     uri="flux://templates/recent-data/{bucket}/{measurement}/{field}/{duration}",
     name="Recent Data Query Template",
@@ -295,9 +299,10 @@ from(bucket: "{bucket}")
   |> sort(columns: ["_time"])
   |> yield(name: "recent_data")"""
 
+
 @mcp.resource(
     uri="flux://templates/threshold-alerts/{bucket}/{measurement}/{field}/{threshold}",
-    name="Threshold Alert Query Template", 
+    name="Threshold Alert Query Template",
     description="Flux query template for monitoring values that exceed a specific threshold",
     mime_type="text/plain",
 )
@@ -307,7 +312,7 @@ def get_threshold_alert_query(bucket: str, measurement: str, field: str, thresho
         threshold_value = float(threshold)
     except ValueError:
         threshold_value = 80.0  # Default threshold
-    
+
     return f"""// Query: Monitor values exceeding threshold of {threshold_value}
 // Generated: {datetime.now().isoformat()}
 // Bucket: {bucket}, Measurement: {measurement}, Field: {field}
@@ -333,7 +338,9 @@ from(bucket: "{bucket}")
     description="Flux query template to detect statistical anomalies using standard deviation",
     mime_type="text/plain",
 )
-def get_anomaly_detection_query(bucket: str = "YOUR_BUCKET", measurement: str = "YOUR_MEASUREMENT", field: str = "YOUR_FIELD") -> str:
+def get_anomaly_detection_query(
+    bucket: str = "YOUR_BUCKET", measurement: str = "YOUR_MEASUREMENT", field: str = "YOUR_FIELD"
+) -> str:
     """Returns a Flux query template for detecting statistical anomalies."""
     if bucket == "YOUR_BUCKET":
         # Return generic template
@@ -384,6 +391,7 @@ data
     }}))
   |> filter(fn: (r) => r._anomaly == true)
   |> yield(name: "anomalies")"""
+
 
 @mcp.resource(
     uri="flux://templates/correlation/{bucket}/{measurement1}/{field1}/{measurement2}/{field2}",
@@ -442,16 +450,14 @@ def main():
             if connection_status["status"] == "connected":
                 logger.info("InfluxDB connection successful")
             else:
-                logger.error(
-                    f"InfluxDB connection failed: {connection_status.get('message', 'Unknown error')}"
-                )
+                logger.error(f"InfluxDB connection failed: {connection_status.get('message', 'Unknown error')}")
 
         except Exception as e:
             logger.error(f"Failed to initialize InfluxDB connection: {e}")
             logger.warning("Server will start but InfluxDB operations may fail")
 
         # Start the FastMCP server
-        mcp.run(transport=MCP_TRANSPORT) # type: ignore
+        mcp.run(transport=MCP_TRANSPORT)  # type: ignore
 
     except KeyboardInterrupt:
         logger.info("Server stopped by user")

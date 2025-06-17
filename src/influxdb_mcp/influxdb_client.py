@@ -74,11 +74,7 @@ class InfluxDBManager:
                 return {
                     "status": "connected",
                     "health": health.status if health else "unknown",
-                    "message": (
-                        health.message
-                        if health and health.message
-                        else "Connection successful"
-                    ),
+                    "message": (health.message if health and health.message else "Connection successful"),
                     "url": self.config.url,
                     "org": self.config.org,
                     "version": self._client.version(),
@@ -142,9 +138,7 @@ class InfluxDBManager:
             result = []
             for measurement in measurements:
                 for record in measurement.records:
-                    result.append(
-                        {"measurement": record.get_value(), "tags": [], "fields": []}
-                    )
+                    result.append({"measurement": record.get_value(), "tags": [], "fields": []})
                     schema_query = self._query_api.query(  # type: ignore
                         f"""
                         import "influxdata/influxdb/schema"
@@ -186,19 +180,13 @@ class InfluxDBManager:
                 bucket_info = {
                     "name": bucket.name,
                     "type": bucket.type if hasattr(bucket, "type") else None,
-                    "created_at": (
-                        bucket.created_at.isoformat() if bucket.created_at else None
-                    ),
-                    "updated_at": (
-                        bucket.updated_at.isoformat() if bucket.updated_at else None
-                    ),
+                    "created_at": (bucket.created_at.isoformat() if bucket.created_at else None),
+                    "updated_at": (bucket.updated_at.isoformat() if bucket.updated_at else None),
                 }
 
                 bucket_list.append(bucket_info)
 
-            logger.info(
-                f"Found {len(bucket_list)} buckets in organization '{self.config.org}'"
-            )
+            logger.info(f"Found {len(bucket_list)} buckets in organization '{self.config.org}'")
             return bucket_list
 
         except ApiException as e:

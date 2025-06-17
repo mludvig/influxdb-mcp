@@ -66,9 +66,7 @@ def get_config() -> InfluxDBConfig:
         "1",
         "yes",
     )
-    timeout = int(
-        os.getenv("INFLUXDB_TIMEOUT", "5000")
-    )  # Default timeout in milliseconds
+    timeout = int(os.getenv("INFLUXDB_TIMEOUT", "5000"))  # Default timeout in milliseconds
 
     return InfluxDBConfig(
         host=host,
