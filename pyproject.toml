@@ -38,3 +38,69 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 influxdb-mcp = "influxdb_mcp:main"
+
+[tool.hatch.envs.default.scripts]
+format = "black src/influxdb_mcp/"
+format-check = "black --check src/influxdb_mcp/"
+lint = "pylint src/influxdb_mcp/"
+flake = "flake8 src/influxdb_mcp/"
+check-all = [
+    "format",
+    "lint",
+    "flake",
+]
+
+# Pylint configuration
+[tool.pylint.main]
+# Specify paths to analyze
+init-hook = 'import sys; sys.path.append("src")'
+
+[tool.pylint.messages_control]
+disable = [
+    "logging-fstring-interpolation",
+    # Add other rules you want to disable here
+    # "missing-docstring",
+    # "too-few-public-methods",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.basic]
+good-names = ["e", "i", "j", "k", "ex", "_", "db", "id"]
+
+# Black configuration
+[tool.black]
+line-length = 120
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# Flake8 configuration
+[tool.flake8]
+max-line-length = 120
+extend-ignore = [
+    "E203",  # whitespace before ':' (conflicts with black)
+    "W503",  # line break before binary operator (conflicts with black)
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    ".eggs",
+    "*.egg",
+    "build",
+    "dist",
+]
