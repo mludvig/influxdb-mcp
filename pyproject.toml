@@ -3,6 +3,26 @@ name = "influxdb-mcp"
 description = "MCP server providing read-only access to InfluxDB v2 databases"
 readme = "README.md"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Michael Ludvig", email = "mludvig@logix.net.nz"}
+]
+keywords = ["influxdb", "mcp", "model-context-protocol", "timeseries", "llm"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
 dependencies = [
     "mcp[cli]>=1.9.0",
     "influxdb-client>=1.44.0",
@@ -10,32 +30,32 @@ dependencies = [
     "pydantic>=2.0.0",
     "typing-extensions>=4.0.0",
 ]
-license = {text = "MIT"}
 dynamic = ["version"]
 
 [tool.hatch.version]
 path = "src/influxdb_mcp/__init__.py"
 
+[project.scripts]
+influxdb-mcp = "influxdb_mcp:main"
+
 [project.optional-dependencies]
 dev = [
     "hatch",
-    "pytest",
     "ruff",
     "mypy",
-    "pytest-cov",
     "pre-commit",
+    "pytest",
+    "pytest-cov",
 ]
 
-[[project.authors]]
-name = "Michael Ludvig"
-email = "mludvig@logix.net.nz"
+[project.urls]
+Homepage = "https://github.com/mludvig/influxdb-mcp"
+Repository = "https://github.com/mludvig/influxdb-mcp"
+Bug_Tracker = "https://github.com/mludvig/influxdb-mcp/issues"
 
 [build-system]
 requires = [ "hatchling",]
 build-backend = "hatchling.build"
-
-[project.scripts]
-influxdb-mcp = "influxdb_mcp:main"
 
 [tool.hatch.envs.default.scripts]
 check = "ruff check src"
@@ -43,3 +63,28 @@ check = "ruff check src"
 [tool.ruff]
 line-length = 120
 target-version = "py310"
+# See https://beta.ruff.rs/docs/configuration/
+# select = ["E", "F", "W", "I", "UP", "ASYNC", "BLE", "B", "A", "C4", "T20", "PYI", "PT", "Q", "RET", "SIM", "TID", "ARG", "ERA", "PL", "TRY", "RUF"]
+# ignore = ["E501"] # Example: ignore line too long if you manage it with a formatter
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true # Can be set to false for stricter checks if all deps have types
+# Add paths if your sources are not automatically discovered
+files = "src/influxdb_mcp"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=src/influxdb_mcp --cov-report=term-missing --cov-report=xml"
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+source = ["src/influxdb_mcp"]
+
+[tool.coverage.report]
+fail_under = 80 # Example: set a minimum coverage target
+show_missing = true

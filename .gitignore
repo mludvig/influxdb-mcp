@@ -10,5 +10,25 @@ wheels/
 # Virtual environments
 .venv
 
-# Secrets files
+# Test artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+junit/
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# dotenv
 .env
+*.env.*
+!*.env.example # Keep example env files
+
+# Notebook checkpoints
+.ipynb_checkpoints/
