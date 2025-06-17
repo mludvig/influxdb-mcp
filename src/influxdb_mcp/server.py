@@ -147,27 +147,6 @@ def execute_flux_query(query: str) -> Dict[str, Any]:
         return {"status": "error", "message": str(e), "query": query}
 
 
-@mcp.tool()
-def get_server_info() -> Dict[str, Any]:
-    """Get comprehensive information about the MCP server including version, InfluxDB configuration, and connection settings."""
-    try:
-        config = get_config()
-        return {
-            "server_name": "influxdb-mcp",
-            "version": "0.1.0",
-            "description": "MCP server providing read-only access to InfluxDB v2 database",
-            "influxdb_config": {
-                "url": config.url,
-                "org": config.org,
-                "use_ssl": config.use_ssl,
-                "timeout": config.timeout,
-            },
-        }
-    except Exception as e:
-        logger.error(f"Failed to get server info: {e}")
-        return {"status": "error", "message": str(e)}
-
-
 # MCP Resources - Live Data Access and Dynamic Queries
 @mcp.resource(
     uri="influxdb://buckets",
